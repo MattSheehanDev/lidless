@@ -6,11 +6,17 @@ cd "$(dirname "$0")/.."
 
 APP_NAME="Lidless"
 BUNDLE_ID="com.matthewsheehan.lidless"
-VERSION="1.0.0"
+VERSION="${VERSION:-1.0.0}"
 APP_DIR="build/${APP_NAME}.app"
 
-swift build -c release
-BIN_PATH="$(swift build -c release --show-bin-path)/${APP_NAME}"
+# UNIVERSAL=1 builds for both Apple Silicon and Intel.
+BUILD_ARGS=(-c release)
+if [[ "${UNIVERSAL:-0}" == "1" ]]; then
+    BUILD_ARGS+=(--arch arm64 --arch x86_64)
+fi
+
+swift build "${BUILD_ARGS[@]}"
+BIN_PATH="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)/${APP_NAME}"
 
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"

@@ -10,19 +10,35 @@ Click the cup in the menu bar and pick a duration:
 
 While a session is running the icon fills in and the menu shows a live countdown.
 
-## Requirements
+## Install
 
-- macOS 14 or later
-- Swift 5.10+ toolchain (the Xcode Command Line Tools are enough; full Xcode isn't required)
+**[Download Lidless.zip](https://github.com/MattSheehanDev/lidless/releases/latest/download/Lidless.zip)** (macOS 14 or later, Apple Silicon and Intel)
 
-## Build and run
+1. Unzip it and move **Lidless.app** to your Applications folder.
+2. Open it. macOS blocks it the first time because the app isn't notarized.
+3. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Lidless.
+
+Or skip steps 2–3 from Terminal:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Lidless.app && open /Applications/Lidless.app
+```
+
+All versions are on the [Releases page](https://github.com/MattSheehanDev/lidless/releases).
+
+## Build from source
+
+Requires a Swift 5.10+ toolchain. The Xcode Command Line Tools are enough; full Xcode isn't required.
 
 ```bash
 make run       # build build/Lidless.app and launch it
 make install   # copy to /Applications and launch
 make test      # run the test suite
 make clean     # remove build output
+make release VERSION=1.2.0   # tag and publish a GitHub release
 ```
+
+`make release` requires a clean working tree and a logged-in [`gh`](https://cli.github.com). It runs the tests, builds a universal app, tags `v<version>`, and publishes a release with `Lidless.zip` attached, so the download link above always gets the newest version.
 
 `make app` builds the release binary with SwiftPM and wraps it in an ad-hoc signed `.app` bundle (see `scripts/bundle.sh`). The app runs as a menu bar–only agent (`LSUIElement`), so it has no Dock icon.
 
@@ -60,7 +76,7 @@ pmset -g assertions | grep Lidless
 ## Limitations
 
 - **Closing the lid still sleeps the Mac** unless it's in clamshell mode (external display and power connected). Preventing lid-close sleep requires root (`sudo pmset disablesleep 1`), which Lidless doesn't do.
-- The app is ad-hoc signed, not notarized. On another Mac, right-click → **Open** the first time.
+- The app is ad-hoc signed, not notarized, so the first launch needs **Open Anyway** (see [Install](#install)).
 
 ## Project layout
 
@@ -69,6 +85,7 @@ Sources/LidlessCore/   AwakeController, power assertions, launch-flag parsing, p
 Sources/Lidless/       Menu bar UI (AppDelegate) and Preferences window
 Tests/LidlessCoreTests Swift Testing suite with a fake clock and fake power assertions
 scripts/bundle.sh      Builds and packages Lidless.app
+scripts/release.sh     Publishes a GitHub release
 ```
 
 ## Website

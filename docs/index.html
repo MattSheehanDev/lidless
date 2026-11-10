@@ -127,6 +127,11 @@
     pre .c { color: #8f88c4; }
     .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .steps h3 { margin: 0 0 10px; font-size: 16px; }
+    .install-steps { margin: 0; padding-left: 20px; }
+    .install-steps li { margin: 0 0 10px; color: var(--muted); }
+    .install-steps li:last-child { margin-bottom: 0; }
+    .install-steps strong { color: var(--text); }
+    .fineprint { margin: 16px 0 0; color: var(--muted); font-size: 14px; }
 
     .note {
       border-left: 3px solid var(--accent); padding: 12px 18px; margin-top: 24px;
@@ -162,9 +167,10 @@
         <h1>Keep your Mac awake.</h1>
         <p class="lede">Lidless lives in your menu bar. Pick how long, and your Mac stays awake through downloads, builds, and presentations. Then it goes back to sleep.</p>
         <div class="ctas">
-          <a class="btn primary" href="#install">Get started</a>
+          <a class="btn primary" href="https://github.com/MattSheehanDev/lidless/releases/latest/download/Lidless.zip">Download for Mac</a>
           <a class="btn secondary" href="https://github.com/MattSheehanDev/lidless">View on GitHub</a>
         </div>
+        <p class="fineprint">Free · macOS 14+ · Apple Silicon &amp; Intel · <a href="#install">Install steps</a></p>
       </div>
 
       <div class="menu-stage">
@@ -230,10 +236,25 @@
 
     <section id="install">
       <h2>Install</h2>
-      <p class="sub">Build from source with the Xcode Command Line Tools. Full Xcode isn't required. Needs macOS 14 or later.</p>
+      <p class="sub">Free download for macOS 14 or later, on Apple Silicon and Intel.</p>
       <div class="steps">
+        <div class="card">
+          <ol class="install-steps">
+            <li><a href="https://github.com/MattSheehanDev/lidless/releases/latest/download/Lidless.zip">Download Lidless.zip</a> and unzip it.</li>
+            <li>Move <strong>Lidless.app</strong> to your Applications folder and open it.</li>
+            <li>macOS blocks it the first time because it isn't notarized. Open <strong>System Settings → Privacy &amp; Security</strong>, scroll down, and click <strong>Open Anyway</strong>.</li>
+          </ol>
+        </div>
         <div>
-          <h3>Build and install</h3>
+          <h3>Or from Terminal</h3>
+<pre>curl -L -o /tmp/Lidless.zip \
+  https://github.com/MattSheehanDev/lidless/releases/latest/download/Lidless.zip
+ditto -x -k /tmp/Lidless.zip /Applications
+xattr -dr com.apple.quarantine /Applications/Lidless.app
+open /Applications/Lidless.app</pre>
+        </div>
+        <div>
+          <h3>Build from source</h3>
 <pre><span class="c"># xcode-select --install  (if needed)</span>
 git clone https://github.com/MattSheehanDev/lidless
 cd lidless
@@ -241,15 +262,12 @@ make install</pre>
         </div>
         <div>
           <h3>Start a session from the terminal</h3>
-<pre>open /Applications/Lidless.app \
-  --args --minutes 45
-
-open /Applications/Lidless.app \
-  --args --indefinite</pre>
+<pre>open /Applications/Lidless.app --args --minutes 45
+open /Applications/Lidless.app --args --indefinite</pre>
         </div>
       </div>
       <div class="note">
-        <strong>Heads up:</strong> closing the lid still sleeps the Mac unless an external display and power are connected (clamshell mode). Lidless is ad-hoc signed, so on a new Mac, right-click it and choose <strong>Open</strong> the first time.
+        <strong>Heads up:</strong> closing the lid still sleeps the Mac unless an external display and power are connected (clamshell mode). All versions are on the <a href="https://github.com/MattSheehanDev/lidless/releases">Releases page</a>.
       </div>
     </section>
 
