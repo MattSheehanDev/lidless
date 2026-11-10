@@ -55,6 +55,38 @@ Open **Preferences…** (⌘,) from the menu:
 
 - **Launch at login** — registers the app as a login item. Works best once installed in `/Applications`.
 - **Allow display to sleep** — the screen may turn off, but the Mac itself stays awake.
+- **Keep awake with lid closed** — also available directly in the menu. See below.
+
+## Keep awake with the lid closed
+
+macOS ignores normal keep-awake requests when you close the lid. The only switch that stops lid-close sleep is the system-wide `pmset disablesleep` setting, which needs root. When you first turn this mode on, Lidless asks for your administrator password once and installs `/etc/sudoers.d/lidless`, which lets your account run exactly these two commands without a password:
+
+```
+/usr/bin/pmset -a disablesleep 1
+/usr/bin/pmset -a disablesleep 0
+```
+
+With the mode on, Lidless disables sleep only while a session is running. While it's active, the menu header ends with ", even with lid closed". Sleep is turned back on when:
+
+- the session's time runs out, or you choose **Turn Off**;
+- you quit Lidless, including with `kill`, `killall Lidless`, or at logout;
+- on battery power, the charge drops to 10%.
+
+It also protects against leaving sleep disabled by accident:
+
+- If Lidless is force-killed (`kill -9`) or crashes mid-session, it re-enables sleep the next time it launches.
+- If you had already run `pmset disablesleep 1` yourself, Lidless leaves the setting alone.
+
+To check the current state from Terminal:
+
+```bash
+pmset -g | grep SleepDisabled      # 1 while a lid-closed session is running
+pmset -g log | grep -E "Sleep  |Wake  "   # sleep and wake history, to confirm the Mac stayed awake
+```
+
+While sleep is disabled, the Mac also won't sleep from **Apple menu → Sleep**. Running with the lid closed in a bag can get hot, so give it some airflow.
+
+To remove the rule, use **Remove Lid-Closed Helper…** in Preferences, or run `sudo rm /etc/sudoers.d/lidless`. If sleep is ever stuck off, `sudo pmset -a disablesleep 0` restores it.
 
 ## Command-line flags
 
@@ -67,7 +99,7 @@ open /Applications/Lidless.app --args --indefinite
 
 ## How it works
 
-Lidless holds an IOKit power assertion (the same mechanism as `caffeinate`) while a session is active:
+Lidless holds an IOKit power assertion (the same mechanism as `caffeinate`) while a session is active. This prevents idle sleep only:
 
 - `PreventUserIdleDisplaySleep` by default
 - `PreventUserIdleSystemSleep` when **Allow display to sleep** is on
@@ -80,13 +112,13 @@ pmset -g assertions | grep Lidless
 
 ## Limitations
 
-- **Closing the lid still sleeps the Mac** unless it's in clamshell mode (external display and power connected). Preventing lid-close sleep requires root (`sudo pmset disablesleep 1`), which Lidless doesn't do.
+- **Closing the lid still sleeps the Mac** unless you turn on [Keep awake with lid closed](#keep-awake-with-the-lid-closed), which needs a one-time administrator password.
 - The app is ad-hoc signed, not notarized, so the first launch needs **Open Anyway** (see [Install](#install)).
 
 ## Project layout
 
 ```
-Sources/LidlessCore/   AwakeController, power assertions, launch-flag parsing, preferences
+Sources/LidlessCore/   AwakeController, power assertions, lid-closed mode, battery checks, launch flags, preferences
 Sources/Lidless/       Menu bar UI (AppDelegate) and Preferences window
 Tests/LidlessCoreTests Swift Testing suite with a fake clock and fake power assertions
 scripts/bundle.sh      Builds and packages Lidless.app

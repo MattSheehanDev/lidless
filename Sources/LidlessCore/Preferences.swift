@@ -3,9 +3,17 @@ import ServiceManagement
 
 public enum Prefs {
     public static let allowDisplaySleepKey = "allowDisplaySleep"
+    public static let keepAwakeWithLidClosedKey = "keepAwakeWithLidClosed"
+    /// Set while Lidless has disabled system sleep, so a crash can be cleaned up on next launch.
+    public static let lidSleepOverrideActiveKey = "lidSleepOverrideActive"
 
     public static var allowDisplaySleep: Bool {
         UserDefaults.standard.bool(forKey: allowDisplaySleepKey)
+    }
+
+    public static var keepAwakeWithLidClosed: Bool {
+        get { UserDefaults.standard.bool(forKey: keepAwakeWithLidClosedKey) }
+        set { UserDefaults.standard.set(newValue, forKey: keepAwakeWithLidClosedKey) }
     }
 }
 

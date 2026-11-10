@@ -126,6 +126,7 @@
     code { font-family: var(--mono); font-size: 0.92em; }
     pre .c { color: #8f88c4; }
     .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .steps > * { min-width: 0; }
     .steps h3 { margin: 0 0 10px; font-size: 16px; }
     .install-steps { margin: 0; padding-left: 20px; }
     .install-steps li { margin: 0 0 10px; color: var(--muted); }
@@ -153,6 +154,7 @@
     <div class="left">
       <strong>Lidless</strong>
       <a href="#features">Features</a>
+      <a href="#lid-closed">Lid closed</a>
       <a href="#install">Install</a>
       <a href="https://github.com/MattSheehanDev/lidless">GitHub</a>
     </div>
@@ -189,6 +191,8 @@
           <div class="row item" data-minutes="480">8 Hours</div>
           <div class="row item" data-minutes="720">12 Hours</div>
           <div class="sep"></div>
+          <div class="row item" id="menu-lid">Keep Awake with Lid Closed</div>
+          <div class="sep"></div>
           <div class="row item">Preferences… <span class="kbd">⌘ ,</span></div>
           <div class="row item">More <span class="kbd">›</span></div>
           <div class="sep"></div>
@@ -217,9 +221,9 @@
           <p>Uses the same power-management API as <code>caffeinate</code>. Sessions end on time, and quitting always releases the hold.</p>
         </div>
         <div class="card">
-          <div class="icon">🚀</div>
-          <h3>Launch at login</h3>
-          <p>Registers as a login item so it's always waiting in your menu bar.</p>
+          <div class="icon">💻</div>
+          <h3>Even with the lid closed</h3>
+          <p>Optionally keep running when you close the lid. Sleep comes back as soon as the session ends, and sessions stop at 10% battery.</p>
         </div>
         <div class="card">
           <div class="icon">⌨️</div>
@@ -229,9 +233,36 @@
         <div class="card">
           <div class="icon">🪶</div>
           <h3>No Dock icon, no fuss</h3>
-          <p>A native AppKit menu bar agent with no dependencies, no admin rights, and no background daemons.</p>
+          <p>A native AppKit menu bar agent that can launch at login. No dependencies and no background daemons.</p>
         </div>
       </div>
+    </section>
+
+    <section id="lid-closed">
+      <h2>Close the lid. Keep working.</h2>
+      <p class="sub">macOS ignores normal keep-awake requests when the lid closes. Lidless can handle that too.</p>
+      <div class="features">
+        <div class="card">
+          <div class="icon">🔐</div>
+          <h3>One password, narrow access</h3>
+          <p>Turning on <strong>Keep Awake with Lid Closed</strong> asks for your administrator password once. It installs a rule that lets your account run only <code>pmset disablesleep 1</code> and <code>0</code>, nothing else.</p>
+        </div>
+        <div class="card">
+          <div class="icon">↩️</div>
+          <h3>Sleep comes back</h3>
+          <p>Lid-close sleep is off only during a session. It's restored when the time runs out, when you turn it off or quit, and on the next launch after a crash.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🪫</div>
+          <h3>Battery safeguard</h3>
+          <p>On battery, lid-closed sessions end at 10%. If you'd already disabled sleep yourself, Lidless leaves your setting alone.</p>
+        </div>
+      </div>
+<pre style="margin-top: 16px"><span class="c"># Check it from Terminal: prints 1 while a lid-closed session is running</span>
+pmset -g | grep SleepDisabled
+
+<span class="c"># Remove the rule at any time (or use Preferences → Remove Lid-Closed Helper…)</span>
+sudo rm /etc/sudoers.d/lidless</pre>
     </section>
 
     <section id="install">
@@ -267,7 +298,7 @@ open /Applications/Lidless.app --args --indefinite</pre>
         </div>
       </div>
       <div class="note">
-        <strong>Heads up:</strong> closing the lid still sleeps the Mac unless an external display and power are connected (clamshell mode). All versions are on the <a href="https://github.com/MattSheehanDev/lidless/releases">Releases page</a>.
+        <strong>Lid closed:</strong> by default, closing the lid still sleeps the Mac. Turn on <strong>Keep Awake with Lid Closed</strong> in the menu to stop that (<a href="#lid-closed">how it works</a>). Running with the lid closed in a bag can get hot, so give it some airflow. All versions are on the <a href="https://github.com/MattSheehanDev/lidless/releases">Releases page</a>.
       </div>
     </section>
 
@@ -290,18 +321,33 @@ open /Applications/Lidless.app --args --indefinite</pre>
     const header = document.getElementById("menu-header");
     const turnOff = document.getElementById("menu-turnoff");
     const presets = document.querySelectorAll("[data-minutes]");
+    const lidItem = document.getElementById("menu-lid");
     let timer = null;
+    // undefined: inactive, null: indefinite, number: seconds left.
+    let left;
 
     const fmt = (s) => {
       const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
       return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
     };
 
+    const render = () => {
+      const lid = lidItem.classList.contains("checked") ? ", even with lid closed" : "";
+      if (left === undefined) {
+        header.textContent = "Keep this Mac awake";
+      } else if (left === null) {
+        header.textContent = "Awake indefinitely" + lid;
+      } else {
+        header.innerHTML = `Awake — <span class="countdown">${fmt(left)}</span> remaining${lid}`;
+      }
+    };
+
     const stop = () => {
       clearInterval(timer);
+      left = undefined;
       presets.forEach((p) => p.classList.remove("checked"));
-      header.textContent = "Keep this Mac awake";
       turnOff.hidden = true;
+      render();
     };
 
     presets.forEach((item) => {
@@ -310,15 +356,9 @@ open /Applications/Lidless.app --args --indefinite</pre>
         item.classList.add("checked");
         turnOff.hidden = false;
         const minutes = Number(item.dataset.minutes);
-        if (!minutes) {
-          header.textContent = "Awake indefinitely";
-          return;
-        }
-        let left = minutes * 60;
-        const render = () => {
-          header.innerHTML = `Awake — <span class="countdown">${fmt(left)}</span> remaining`;
-        };
+        left = minutes ? minutes * 60 : null;
         render();
+        if (left === null) return;
         timer = setInterval(() => {
           left -= 1;
           if (left <= 0) stop(); else render();
@@ -327,6 +367,10 @@ open /Applications/Lidless.app --args --indefinite</pre>
     });
 
     document.querySelector("[data-off]").addEventListener("click", stop);
+    lidItem.addEventListener("click", () => {
+      lidItem.classList.toggle("checked");
+      render();
+    });
   </script>
 </body>
 </html>

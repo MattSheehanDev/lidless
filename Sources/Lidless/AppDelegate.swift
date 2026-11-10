@@ -35,6 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.menu = menu
 
         controller.onChange = { [weak self] in self?.stateDidChange() }
+        controller.restoreLidSleepAfterUnexpectedExit()
+        quitOnTerminationSignals()
         updateIcon()
         applyLaunchArguments()
     }
@@ -43,6 +45,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func applyLaunchArguments() {
         if let request = LaunchArguments.sessionRequest(from: CommandLine.arguments) {
             controller.activate(for: request.seconds)
+        }
+    }
+
+    private var signalSources: [DispatchSourceSignal] = []
+
+    /// AppKit exits on SIGTERM/SIGINT/SIGHUP without calling applicationWillTerminate,
+    /// which would leave lid-close sleep disabled until the next launch.
+    private func quitOnTerminationSignals() {
+        for sig in [SIGTERM, SIGINT, SIGHUP] {
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+            source.setEventHandler { NSApp.terminate(nil) }
+            source.resume()
+            signalSources.append(source)
         }
     }
 
@@ -75,6 +91,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             presetItem.state = isSelected(preset.seconds) ? .on : .off
             menu.addItem(presetItem)
         }
+
+        menu.addItem(.separator())
+        let lidItem = item("Keep Awake with Lid Closed", action: #selector(toggleLidMode))
+        lidItem.state = Prefs.keepAwakeWithLidClosed ? .on : .off
+        menu.addItem(lidItem)
 
         menu.addItem(.separator())
         menu.addItem(item("Preferences…", action: #selector(openPreferences), key: ","))
@@ -110,11 +131,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .inactive:
             return "Keep this Mac awake"
         case .indefinite:
-            return "Awake indefinitely"
+            return "Awake indefinitely" + lidSuffix
         case .until:
             let remaining = remainingFormatter.string(from: controller.remaining ?? 0) ?? ""
-            return "Awake — \(remaining) remaining"
+            return "Awake — \(remaining) remaining" + lidSuffix
         }
+    }
+
+    private var lidSuffix: String {
+        controller.isOverridingLidSleep ? ", even with lid closed" : ""
     }
 
     private func stateDidChange() {
@@ -138,6 +163,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func turnOff() {
         controller.deactivate()
+    }
+
+    @objc private func toggleLidMode() {
+        LidModeSetup.setEnabled(!Prefs.keepAwakeWithLidClosed)
     }
 
     @objc private func customDuration() {

@@ -25,6 +25,26 @@ final class FakePowerAssertions: PowerAssertions {
     }
 }
 
+final class FakeLidSleep: LidSleepControl {
+    var disabled = false
+    var shouldFail = false
+    private(set) var calls: [Bool] = []
+
+    func isSleepDisabled() -> Bool { disabled }
+
+    func setSleepDisabled(_ disabled: Bool) -> Bool {
+        calls.append(disabled)
+        guard !shouldFail else { return false }
+        self.disabled = disabled
+        return true
+    }
+}
+
+final class FakePowerSource: PowerSource {
+    var status: BatteryStatus?
+    func batteryStatus() -> BatteryStatus? { status }
+}
+
 final class FakeClock {
     var now = Date(timeIntervalSinceReferenceDate: 0)
     func advance(by seconds: TimeInterval) { now += seconds }
@@ -33,6 +53,8 @@ final class FakeClock {
 @MainActor
 struct AwakeControllerTests {
     let assertions = FakePowerAssertions()
+    let lidSleep = FakeLidSleep()
+    let power = FakePowerSource()
     let clock = FakeClock()
     let defaults: UserDefaults
     let controller: AwakeController
@@ -42,7 +64,10 @@ struct AwakeControllerTests {
         defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         let clock = clock
-        controller = AwakeController(assertions: assertions, defaults: defaults, now: { clock.now })
+        controller = AwakeController(
+            assertions: assertions, lidSleep: lidSleep, powerSource: power,
+            defaults: defaults, now: { clock.now }
+        )
     }
 
     @Test func startsInactive() {
