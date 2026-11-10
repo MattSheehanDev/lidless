@@ -1,4 +1,4 @@
-.PHONY: app run install test package release clean
+.PHONY: app run install test package clean
 
 # Command Line Tools builds lose the Swift Testing macro plugin on incremental rebuilds.
 CLT_DIR := /Library/Developer/CommandLineTools
@@ -23,11 +23,5 @@ install: app
 package:
 	@test -n "$(VERSION)" || (echo "usage: make package VERSION=x.y.z" && exit 1)
 	./scripts/package.sh $(VERSION)
-
-# make release VERSION=1.2.0
-release:
-	@test -n "$(VERSION)" || (echo "usage: make release VERSION=x.y.z" && exit 1)
-	./scripts/release.sh $(VERSION)
-
 clean:
 	rm -rf .build build

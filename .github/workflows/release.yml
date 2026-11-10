@@ -1,46 +1,43 @@
 name: Release
 
+# Every push to main runs the tests, then semantic-release reads the Conventional Commits
+# since the last v* tag. feat → minor, fix/perf → patch, feat!/BREAKING CHANGE → major;
+# other types (docs, chore, ci, ...) don't release.
 on:
   push:
-    tags: ["v*"]
-  # Manual runs test and package the app as a workflow artifact without publishing a release.
+    branches: [main]
+  # Manual runs do a dry run: they report the next version without tagging or publishing.
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Test
         run: make test
 
-      - name: Package
-        run: |
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-          else
-            VERSION="0.0.0"
-          fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          ./scripts/package.sh "$VERSION"
-          lipo -archs build/Lidless.app/Contents/MacOS/Lidless
-          codesign --verify --deep --strict build/Lidless.app
-
-      - uses: actions/upload-artifact@v7
+      - uses: actions/setup-node@v7
         with:
-          name: Lidless-${{ env.VERSION }}
-          path: build/Lidless.zip
+          node-version: 24
 
-      - name: Publish release
-        if: github.ref_type == 'tag'
+      - name: Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && '--dry-run' || '' }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/Lidless.zip \
-            --title "Lidless ${VERSION}" \
-            --notes-file build/release-notes.md \
-            --generate-notes
+          npx --yes \
+            -p semantic-release@25.0.9 \
+            -p @semantic-release/exec@7.1.0 \
+            -p conventional-changelog-conventionalcommits@10.4.1 \
+            semantic-release $DRY_RUN

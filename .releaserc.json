@@ -1,0 +1,24 @@
+{
+  "branches": ["main"],
+  "tagFormat": "v${version}",
+  "plugins": [
+    ["@semantic-release/commit-analyzer", { "preset": "conventionalcommits" }],
+    [
+      "@semantic-release/exec",
+      {
+        "generateNotesCmd": "cat .github/release-install-notes.md",
+        "prepareCmd": "./scripts/package.sh ${nextRelease.version}"
+      }
+    ],
+    ["@semantic-release/release-notes-generator", { "preset": "conventionalcommits" }],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [{ "path": "build/Lidless.zip", "name": "Lidless.zip", "label": "Lidless.zip" }],
+        "successComment": false,
+        "failComment": false,
+        "releasedLabels": false
+      }
+    ]
+  ]
+}

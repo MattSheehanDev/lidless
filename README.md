@@ -36,14 +36,22 @@ make install   # copy to /Applications and launch
 make test      # run the test suite
 make clean     # remove build output
 make package VERSION=1.2.0   # build a universal app and build/Lidless.zip locally
-make release VERSION=1.2.0   # tag v1.2.0 and push it, which triggers the release build
 ```
 
 ## Releasing
 
-Run `make release VERSION=1.2.0` from a clean `main`. It runs the tests, then tags `v1.2.0` and pushes the tag. Pushing a `v*` tag triggers the [Release workflow](.github/workflows/release.yml) on GitHub Actions, which tests again, builds a universal `Lidless.zip`, and publishes a GitHub release with it attached. The download link above always gets the newest release.
+Releases are automatic. Every push to `main` runs the [Release workflow](.github/workflows/release.yml), which runs the tests and then [semantic-release](https://semantic-release.gitbook.io). semantic-release reads the [Conventional Commits](https://www.conventionalcommits.org) since the last `v*` tag and picks the next version:
 
-You can also run the workflow manually from the Actions tab. It tests and packages the app as a downloadable workflow artifact without publishing a release.
+| Commit message | Release |
+|---|---|
+| `fix: countdown skips a second` or `perf: …` | Patch, e.g. 1.1.0 → 1.1.1 |
+| `feat: add a 24-hour preset` | Minor, e.g. 1.1.0 → 1.2.0 |
+| `feat!: require macOS 15`, or a `BREAKING CHANGE:` footer | Major, e.g. 1.1.0 → 2.0.0 |
+| `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `style:`, `build:` | No release |
+
+When a release is due, it builds a universal `Lidless.zip`, tags `v<version>`, and publishes a GitHub release with the zip attached and notes grouped by commit type. The download link above always gets the newest release.
+
+Commits that don't follow the format are ignored, so a typo like `feature:` won't release. To preview the next version without publishing, run the workflow manually from the Actions tab; that does a dry run.
 
 `make app` builds the release binary with SwiftPM and wraps it in an ad-hoc signed `.app` bundle (see `scripts/bundle.sh`). The app runs as a menu bar–only agent (`LSUIElement`), so it has no Dock icon.
 
@@ -122,8 +130,8 @@ Sources/LidlessCore/   AwakeController, power assertions, lid-closed mode, batte
 Sources/Lidless/       Menu bar UI (AppDelegate) and Preferences window
 Tests/LidlessCoreTests Swift Testing suite with a fake clock and fake power assertions
 scripts/bundle.sh      Builds and packages Lidless.app
-scripts/package.sh     Builds the universal app, Lidless.zip, and release notes
-scripts/release.sh     Tags and pushes a version, triggering the Release workflow
+scripts/package.sh     Builds the universal app and Lidless.zip
+.releaserc.json        semantic-release configuration
 .github/workflows/     Release workflow
 ```
 
