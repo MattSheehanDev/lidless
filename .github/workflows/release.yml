@@ -13,7 +13,7 @@ jobs:
   release:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Test
         run: make test
@@ -30,7 +30,7 @@ jobs:
           lipo -archs build/Lidless.app/Contents/MacOS/Lidless
           codesign --verify --deep --strict build/Lidless.app
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Lidless-${{ env.VERSION }}
           path: build/Lidless.zip
