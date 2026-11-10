@@ -35,10 +35,15 @@ make run       # build build/Lidless.app and launch it
 make install   # copy to /Applications and launch
 make test      # run the test suite
 make clean     # remove build output
-make release VERSION=1.2.0   # tag and publish a GitHub release
+make package VERSION=1.2.0   # build a universal app and build/Lidless.zip locally
+make release VERSION=1.2.0   # tag v1.2.0 and push it, which triggers the release build
 ```
 
-`make release` requires a clean working tree and a logged-in [`gh`](https://cli.github.com). It runs the tests, builds a universal app, tags `v<version>`, and publishes a release with `Lidless.zip` attached, so the download link above always gets the newest version.
+## Releasing
+
+Run `make release VERSION=1.2.0` from a clean `main`. It runs the tests, then tags `v1.2.0` and pushes the tag. Pushing a `v*` tag triggers the [Release workflow](.github/workflows/release.yml) on GitHub Actions, which tests again, builds a universal `Lidless.zip`, and publishes a GitHub release with it attached. The download link above always gets the newest release.
+
+You can also run the workflow manually from the Actions tab. It tests and packages the app as a downloadable workflow artifact without publishing a release.
 
 `make app` builds the release binary with SwiftPM and wraps it in an ad-hoc signed `.app` bundle (see `scripts/bundle.sh`). The app runs as a menu bar–only agent (`LSUIElement`), so it has no Dock icon.
 
@@ -85,7 +90,9 @@ Sources/LidlessCore/   AwakeController, power assertions, launch-flag parsing, p
 Sources/Lidless/       Menu bar UI (AppDelegate) and Preferences window
 Tests/LidlessCoreTests Swift Testing suite with a fake clock and fake power assertions
 scripts/bundle.sh      Builds and packages Lidless.app
-scripts/release.sh     Publishes a GitHub release
+scripts/package.sh     Builds the universal app, Lidless.zip, and release notes
+scripts/release.sh     Tags and pushes a version, triggering the Release workflow
+.github/workflows/     Release workflow
 ```
 
 ## Website
