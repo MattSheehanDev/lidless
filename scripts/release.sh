@@ -29,7 +29,8 @@ ditto -c -k --keepParent build/Lidless.app "$ZIP"
 git tag -a "$TAG" -m "Lidless ${VERSION}"
 git push origin "$TAG"
 
-NOTES=$(cat <<EOF
+NOTES_FILE="build/release-notes.md"
+cat > "$NOTES_FILE" <<'EOF'
 ## Install
 
 1. Download **Lidless.zip** below and unzip it.
@@ -38,12 +39,11 @@ NOTES=$(cat <<EOF
 
 Or, from Terminal:
 
-\`\`\`bash
+```bash
 xattr -dr com.apple.quarantine /Applications/Lidless.app && open /Applications/Lidless.app
-\`\`\`
+```
 
 Requires macOS 14 or later. Universal build for Apple Silicon and Intel.
 EOF
-)
 
-"$GH" release create "$TAG" "$ZIP" --title "Lidless ${VERSION}" --notes "$NOTES" --generate-notes
+"$GH" release create "$TAG" "$ZIP" --title "Lidless ${VERSION}" --notes-file "$NOTES_FILE" --generate-notes
