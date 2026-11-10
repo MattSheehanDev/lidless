@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lidless — keep your Mac awake</title>
+  <meta name="description" content="A tiny macOS menu bar app that keeps your Mac awake, indefinitely or for a set amount of time.">
+  <meta property="og:title" content="Lidless — keep your Mac awake">
+  <meta property="og:description" content="A tiny macOS menu bar app that keeps your Mac awake, indefinitely or for a set amount of time.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+  <style>
+    :root {
+      --bg-1: #1d1580;
+      --bg-2: #3a1fb8;
+      --bg-3: #5b2aa6;
+      --text: #f4f2ff;
+      --muted: #b9b2e6;
+      --card: rgba(255, 255, 255, 0.07);
+      --card-border: rgba(255, 255, 255, 0.14);
+      --accent: #ffcf7a;
+      --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 0%, var(--bg-2), transparent 60%),
+        radial-gradient(900px 600px at 90% 100%, var(--bg-3), transparent 60%),
+        var(--bg-1);
+      background-attachment: fixed;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); }
+
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+    /* Fake macOS menu bar */
+    .menubar {
+      position: sticky; top: 0; z-index: 10;
+      height: 34px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 20px;
+      padding: 0 20px;
+      background: rgba(20, 12, 90, 0.55);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      font-size: 14px; font-weight: 500;
+    }
+    .menubar .left { margin-right: auto; display: flex; gap: 18px; align-items: center; }
+    .menubar .left strong { font-weight: 700; }
+    .menubar a { color: var(--text); text-decoration: none; opacity: 0.85; }
+    .menubar a:hover { opacity: 1; }
+    .cup-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 26px; border-radius: 6px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    /* Hero */
+    .hero {
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center;
+      padding: 88px 0 72px;
+    }
+    .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 13px; }
+    h1 { font-size: clamp(44px, 6vw, 68px); line-height: 1.02; margin: 12px 0 18px; letter-spacing: -0.03em; }
+    .lede { font-size: 20px; color: var(--muted); max-width: 30em; margin: 0 0 32px; }
+    .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: 10px;
+      font-weight: 600; text-decoration: none; font-size: 15px;
+    }
+    .btn.primary { background: var(--text); color: var(--bg-1); }
+    .btn.secondary { color: var(--text); border: 1px solid var(--card-border); background: var(--card); }
+
+    /* Menu mock, modeled on the real app */
+    .menu-stage { display: flex; justify-content: center; }
+    .menu {
+      width: 300px;
+      padding: 6px;
+      border-radius: 12px;
+      background: rgba(48, 32, 150, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 30px 80px rgba(8, 4, 50, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      font-size: 15px;
+      user-select: none;
+    }
+    .menu .row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 14px 5px 26px; border-radius: 6px; position: relative;
+      cursor: default;
+    }
+    .menu .row.header { color: rgba(255, 255, 255, 0.5); font-size: 13.5px; padding-left: 14px; }
+    .menu .row.item:hover, .menu .row.item.active-hover { background: rgba(120, 140, 255, 0.55); }
+    .menu .row.checked::before { content: "✓"; position: absolute; left: 9px; font-size: 13px; }
+    .menu .sep { height: 1px; margin: 6px 12px; background: rgba(255, 255, 255, 0.18); }
+    .menu .kbd { color: rgba(255, 255, 255, 0.5); font-size: 13.5px; }
+    .menu .countdown { font-variant-numeric: tabular-nums; }
+
+    /* Sections */
+    section { padding: 56px 0; }
+    h2 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0 0 32px; }
+
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 22px;
+    }
+    .card .icon { font-size: 24px; margin-bottom: 8px; }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    pre {
+      margin: 0; padding: 18px 20px; overflow-x: auto;
+      background: rgba(10, 6, 50, 0.6); border: 1px solid var(--card-border);
+      border-radius: 12px; font-family: var(--mono); font-size: 14px; line-height: 1.7;
+    }
+    code { font-family: var(--mono); font-size: 0.92em; }
+    pre .c { color: #8f88c4; }
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .steps h3 { margin: 0 0 10px; font-size: 16px; }
+
+    .note {
+      border-left: 3px solid var(--accent); padding: 12px 18px; margin-top: 24px;
+      background: var(--card); border-radius: 0 10px 10px 0; color: var(--muted); font-size: 15px;
+    }
+    .note strong { color: var(--text); }
+
+    footer { padding: 40px 0 56px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--card-border); margin-top: 32px; }
+
+    @media (max-width: 820px) {
+      .hero { grid-template-columns: 1fr; padding-top: 56px; }
+      .features, .steps { grid-template-columns: 1fr; }
+      .menubar .left a { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="menubar">
+    <div class="left">
+      <strong>Lidless</strong>
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/MattSheehanDev/lidless">GitHub</a>
+    </div>
+    <span class="cup-btn" aria-hidden="true">☕</span>
+    <span id="clock"></span>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">macOS menu bar app</div>
+        <h1>Keep your Mac awake.</h1>
+        <p class="lede">Lidless lives in your menu bar. Pick how long, and your Mac stays awake through downloads, builds, and presentations. Then it goes back to sleep.</p>
+        <div class="ctas">
+          <a class="btn primary" href="#install">Get started</a>
+          <a class="btn secondary" href="https://github.com/MattSheehanDev/lidless">View on GitHub</a>
+        </div>
+      </div>
+
+      <div class="menu-stage">
+        <div class="menu" id="menu" role="img" aria-label="The Lidless menu">
+          <div class="row header" id="menu-header">Keep this Mac awake</div>
+          <div id="menu-turnoff" hidden>
+            <div class="row item" data-off>Turn Off</div>
+            <div class="sep"></div>
+          </div>
+          <div class="row item" data-minutes="0">Indefinitely</div>
+          <div class="row item" data-minutes="10">10 Minutes</div>
+          <div class="row item" data-minutes="30">30 Minutes</div>
+          <div class="row item" data-minutes="60">1 Hour</div>
+          <div class="row item" data-minutes="120">2 Hours</div>
+          <div class="row item" data-minutes="240">4 Hours</div>
+          <div class="row item" data-minutes="480">8 Hours</div>
+          <div class="row item" data-minutes="720">12 Hours</div>
+          <div class="sep"></div>
+          <div class="row item">Preferences… <span class="kbd">⌘ ,</span></div>
+          <div class="row item">More <span class="kbd">›</span></div>
+          <div class="sep"></div>
+          <div class="row item">Quit Lidless <span class="kbd">⌘ Q</span></div>
+        </div>
+      </div>
+    </header>
+
+    <section id="features">
+      <h2>Small on purpose</h2>
+      <p class="sub">Everything it does fits in one menu.</p>
+      <div class="features">
+        <div class="card">
+          <div class="icon">⏱</div>
+          <h3>Timed or indefinite</h3>
+          <p>From 10 minutes to 12 hours, a custom number of minutes, or until you turn it off. A live countdown shows what's left.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🌙</div>
+          <h3>Let the display sleep</h3>
+          <p>Optionally let the screen turn off while the Mac keeps working, which is good for long downloads and builds.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🔋</div>
+          <h3>Cleans up after itself</h3>
+          <p>Uses the same power-management API as <code>caffeinate</code>. Sessions end on time, and quitting always releases the hold.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🚀</div>
+          <h3>Launch at login</h3>
+          <p>Registers as a login item so it's always waiting in your menu bar.</p>
+        </div>
+        <div class="card">
+          <div class="icon">⌨️</div>
+          <h3>Scriptable</h3>
+          <p>Start a session from the terminal with <code>--minutes 45</code> or <code>--indefinite</code>.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🪶</div>
+          <h3>No Dock icon, no fuss</h3>
+          <p>A native AppKit menu bar agent with no dependencies, no admin rights, and no background daemons.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <h2>Install</h2>
+      <p class="sub">Build from source with the Xcode Command Line Tools. Full Xcode isn't required. Needs macOS 14 or later.</p>
+      <div class="steps">
+        <div>
+          <h3>Build and install</h3>
+<pre><span class="c"># xcode-select --install  (if needed)</span>
+git clone https://github.com/MattSheehanDev/lidless
+cd lidless
+make install</pre>
+        </div>
+        <div>
+          <h3>Start a session from the terminal</h3>
+<pre>open /Applications/Lidless.app \
+  --args --minutes 45
+
+open /Applications/Lidless.app \
+  --args --indefinite</pre>
+        </div>
+      </div>
+      <div class="note">
+        <strong>Heads up:</strong> closing the lid still sleeps the Mac unless an external display and power are connected (clamshell mode). Lidless is ad-hoc signed, so on a new Mac, right-click it and choose <strong>Open</strong> the first time.
+      </div>
+    </section>
+
+    <footer>
+      Lidless · <a href="https://github.com/MattSheehanDev/lidless">Source on GitHub</a>
+    </footer>
+  </main>
+
+  <script>
+    const clock = document.getElementById("clock");
+    const tickClock = () => {
+      clock.textContent = new Date().toLocaleString(undefined, {
+        weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+    };
+    tickClock();
+    setInterval(tickClock, 15000);
+
+    // Clicking the mock menu mirrors the real app: checkmark, countdown header, Turn Off.
+    const header = document.getElementById("menu-header");
+    const turnOff = document.getElementById("menu-turnoff");
+    const presets = document.querySelectorAll("[data-minutes]");
+    let timer = null;
+
+    const fmt = (s) => {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
+    };
+
+    const stop = () => {
+      clearInterval(timer);
+      presets.forEach((p) => p.classList.remove("checked"));
+      header.textContent = "Keep this Mac awake";
+      turnOff.hidden = true;
+    };
+
+    presets.forEach((item) => {
+      item.addEventListener("click", () => {
+        stop();
+        item.classList.add("checked");
+        turnOff.hidden = false;
+        const minutes = Number(item.dataset.minutes);
+        if (!minutes) {
+          header.textContent = "Awake indefinitely";
+          return;
+        }
+        let left = minutes * 60;
+        const render = () => {
+          header.innerHTML = `Awake — <span class="countdown">${fmt(left)}</span> remaining`;
+        };
+        render();
+        timer = setInterval(() => {
+          left -= 1;
+          if (left <= 0) stop(); else render();
+        }, 1000);
+      });
+    });
+
+    document.querySelector("[data-off]").addEventListener("click", stop);
+  </script>
+</body>
+</html>

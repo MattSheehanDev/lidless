@@ -70,3 +70,7 @@ Sources/Lidless/       Menu bar UI (AppDelegate) and Preferences window
 Tests/LidlessCoreTests Swift Testing suite with a fake clock and fake power assertions
 scripts/bundle.sh      Builds and packages Lidless.app
 ```
+
+## Website
+
+Project page: https://mattsheehandev.github.io/lidless/ (served by GitHub Pages from `docs/`).
